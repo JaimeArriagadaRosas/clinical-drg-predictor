@@ -4,7 +4,6 @@ import pytest
 
 from clinical_data.sources.mimic import MimicEncounterSource
 
-
 FIXTURE_ROOT = Path("tests/fixtures/mimic")
 
 

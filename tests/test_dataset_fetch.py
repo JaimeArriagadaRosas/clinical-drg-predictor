@@ -3,7 +3,6 @@ from pathlib import Path
 
 from tools.datasets.fetch import acquire_public_dataset, import_authorized_dataset
 
-
 MANIFEST = Path("tools/datasets/manifests/mimic-iv-demo.yaml")
 REQUIRED = (
     "hosp/admissions.csv.gz",

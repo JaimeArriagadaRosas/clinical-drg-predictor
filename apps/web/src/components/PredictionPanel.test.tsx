@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
 import { PredictionPanel } from './PredictionPanel'
 
 describe('PredictionPanel', () => {
-  it('labels confidence as GRD model confidence instead of disease probability', () => {
+  it('labels confidence as GRD model confidence and explains its limit', () => {
     render(
       <PredictionPanel
         result={{ label: '291', confidence: 0.874, model_name: 'rf', model_version: 'v1' }}
@@ -17,6 +17,8 @@ describe('PredictionPanel', () => {
 
     expect(screen.getByText('87.4%')).toBeInTheDocument()
     expect(screen.getByText('confianza del modelo GRD')).toBeInTheDocument()
-    expect(screen.queryByText(/probabilidad de enfermedad/i)).not.toBeInTheDocument()
+    expect(
+      screen.getByText(/no representa probabilidad de enfermedad/i),
+    ).toBeInTheDocument()
   })
 })
