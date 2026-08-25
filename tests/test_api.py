@@ -43,6 +43,32 @@ def test_prediction_maps_domain_result_to_http():
     assert response.json()["confidence"] == 0.91
 
 
+def test_fhir_prediction_uses_the_same_domain_predictor():
+    predictor = GRDPredictor(FakeModel(), FakeEncoder(), FakeExtractor())
+    client = TestClient(create_app(predictor))
+    response = client.post(
+        "/v1/predictions/drg/fhir",
+        json={
+            "resourceType": "Bundle",
+            "type": "collection",
+            "entry": [
+                {
+                    "resource": {
+                        "resourceType": "Condition",
+                        "code": {
+                            "coding": [
+                                {"system": "http://hl7.org/fhir/sid/icd-10", "code": "I10"}
+                            ]
+                        },
+                    }
+                }
+            ],
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["label"] == "GRD-DEMO"
+
+
 def test_prediction_returns_503_when_assets_are_missing():
     client = TestClient(create_app(GRDPredictor(None, None, None)))
     response = client.post("/v1/predictions/drg", json={"icd10_codes": ["E11.9"]})

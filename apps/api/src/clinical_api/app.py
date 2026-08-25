@@ -1,6 +1,7 @@
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from clinical_core import GRDPredictionRequest
@@ -28,6 +29,13 @@ def create_app(predictor: GRDPredictor | None = None) -> FastAPI:
         title="Clinical Intelligence Platform API",
         version="0.2.0",
         description="Modular API for clinical ML inference and interoperability.",
+    )
+    api.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://127.0.0.1:5173", "http://localhost:5173"],
+        allow_credentials=False,
+        allow_methods=["GET", "POST"],
+        allow_headers=["Content-Type"],
     )
 
     def predict(request: GRDPredictionRequest) -> GRDPredictionResponse:

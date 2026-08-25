@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  quality:
+  python-quality:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -23,3 +23,21 @@ jobs:
         run: uv run ruff check apps packages tests
       - name: Test
         run: uv run pytest -q
+
+  web-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install web workspace
+        run: pnpm install --frozen-lockfile=false
+      - name: Lint web
+        run: pnpm web:lint
+      - name: Build web
+        run: pnpm web:build
