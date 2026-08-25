@@ -1,0 +1,27 @@
+<svg width="1200" height="320" viewBox="0 0 1200 320" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Clinical Intelligence Platform</title>
+  <desc id="desc">Clinical data and machine learning platform for DRG prediction and analytics.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="320" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F172A"/>
+      <stop offset="1" stop-color="#0B3B60"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="790" y1="67" x2="1074" y2="250" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#67E8F9"/>
+      <stop offset="1" stop-color="#22C55E"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="320" rx="28" fill="url(#bg)"/>
+  <circle cx="1060" cy="54" r="140" fill="#FFFFFF" fill-opacity="0.035"/>
+  <circle cx="1110" cy="278" r="185" fill="#FFFFFF" fill-opacity="0.025"/>
+  <text x="72" y="112" fill="#67E8F9" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700" letter-spacing="2">CLINICAL ML · FASTAPI · UV WORKSPACE</text>
+  <text x="72" y="174" fill="white" font-family="Arial, Helvetica, sans-serif" font-size="48" font-weight="700">Clinical Intelligence Platform</text>
+  <text x="72" y="219" fill="#CBD5E1" font-family="Arial, Helvetica, sans-serif" font-size="23">DRG prediction, reproducible ML engineering and clinical analytics.</text>
+  <g transform="translate(838 74)">
+    <rect x="0" y="0" width="258" height="174" rx="24" fill="#0F172A" stroke="#67E8F9" stroke-opacity="0.55" stroke-width="2"/>
+    <path d="M53 88H92L106 54L130 122L149 78L163 88H205" stroke="url(#accent)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="53" cy="88" r="8" fill="#67E8F9"/>
+    <circle cx="205" cy="88" r="8" fill="#22C55E"/>
+    <rect x="70" y="136" width="118" height="8" rx="4" fill="#94A3B8" fill-opacity="0.45"/>
+  </g>
+</svg>
