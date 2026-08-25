@@ -1,136 +1,114 @@
+<p align="center">
+  <img src=".github/assets/readme-banner.svg" alt="Clinical Intelligence Platform" width="100%" />
+</p>
+
+<p align="center">
+  <a href="https://github.com/JaimeArriagadaRosas/clinical-drg-predictor/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/JaimeArriagadaRosas/clinical-drg-predictor/actions/workflows/ci.yml/badge.svg" /></a>
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.11%20%7C%203.12-3776AB?logo=python&logoColor=white" />
+  <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-API-009688?logo=fastapi&logoColor=white" />
+  <img alt="License" src="https://img.shields.io/badge/License-MIT-green.svg" />
+</p>
+
 # Clinical Intelligence Platform
 
-Plataforma modular de ingeniería de datos y Machine Learning clínico, evolucionada a partir del proyecto universitario original de predicción de Grupos Relacionados por Diagnóstico (GRD).
+Plataforma modular de ingeniería de datos y Machine Learning clínico para predicción de **Grupos Relacionados por Diagnóstico (GRD)**.
 
-El repositorio conserva la capacidad de clasificación GRD original y la transforma en una base reproducible para ML Engineering, analítica clínica y futuras capacidades de procesamiento clínico.
+El código actual está organizado como un workspace Python con una API FastAPI, contratos compartidos y una capa de inferencia GRD desacoplada del transporte HTTP. Parte del código académico original permanece temporalmente en `src/` mientras se completa su migración.
 
-## Estado
+## Capacidades actuales
 
-La primera fase de migración a una base limpia ya está completada.
-
-- `apps/api` es el punto de entrada HTTP oficial mediante FastAPI.
-- `packages/clinical-core` concentra contratos compartidos.
-- `packages/clinical-drg` contiene la orquestación de inferencia GRD.
-- `src/` conserva temporalmente el pipeline y chatbot académicos como capa de compatibilidad.
-- El esquema exacto de entrenamiento se reutiliza durante inferencia mediante `dataset/processed/metadata.pkl`, evitando divergencias en el orden de features.
-- Los modelos y datos procesados son artefactos generados y no se versionan.
+- API HTTP con FastAPI y OpenAPI.
+- Inferencia GRD desacoplada del transporte HTTP.
+- Contratos compartidos en paquetes reutilizables.
+- Arranque de la API incluso cuando los artefactos del modelo no están disponibles.
+- Compatibilidad entre el esquema de entrenamiento y el vector utilizado durante inferencia.
+- Pruebas automatizadas y CI para Python 3.11 y 3.12.
+- Gestión del workspace con `uv`.
 
 ## Estructura
 
 ```text
 apps/
-  api/                  FastAPI / OpenAPI
+  api/                  aplicación FastAPI
 packages/
-  clinical-core/        contratos clínicos compartidos
-  clinical-drg/         dominio e inferencia GRD
-dataset/                 dataset fuente y artefactos procesados locales
-docs/                    arquitectura y decisiones
-notebook/                análisis exploratorio histórico
-src/                     pipeline y chatbot de compatibilidad
-tests/                   pruebas automatizadas
+  clinical-core/        contratos compartidos
+  clinical-drg/         inferencia y orquestación GRD
+dataset/                dataset fuente y artefactos locales
+notebook/               análisis exploratorio histórico
+src/                    implementación académica aún utilizada por compatibilidad
+tests/                  pruebas automatizadas
+docs/                   documentación técnica vigente
 ```
 
-La organización es un **monorepo** y el backend utiliza un **monolito modular**. Los procesos solo deberían separarse cuando exista una necesidad operacional distinta.
+Documentación técnica:
+
+- [Arquitectura](docs/architecture.md)
+- [Testing](docs/testing.md)
+- [Desarrollo](docs/development.md)
 
 ## Requisitos
 
-- Python 3.11 o 3.12
+- Python 3.11 o 3.12 para paridad con CI
 - [`uv`](https://docs.astral.sh/uv/)
 
-## Instalación
+## Inicio rápido
 
-Para instalar el workspace y las herramientas de desarrollo:
+Instala el workspace:
 
 ```bash
 uv sync --all-packages --group dev
 ```
 
-Para trabajar también con el pipeline de entrenamiento:
-
-```bash
-uv sync --all-packages --group dev --group training
-```
-
-El chatbot Flask/Gemini histórico es opcional:
-
-```bash
-uv sync --all-packages --group training --group legacy-chatbot
-```
-
-Copia `.env.example` a `.env` únicamente si utilizarás Gemini y configura la clave localmente. `.env` no debe versionarse.
-
-## API FastAPI
-
-Inicia la API oficial desde la raíz:
+Inicia la API:
 
 ```bash
 uv run uvicorn clinical_api.app:app --app-dir apps/api/src --reload
 ```
 
-Comprobación básica:
+Endpoints actuales:
 
 ```text
-GET /health
-```
-
-Predicción GRD:
-
-```text
+GET  /health
 POST /v1/predictions/drg
 ```
 
-La API puede arrancar sin un modelo entrenado; en ese caso `/health` informa que el modelo GRD aún no está disponible y el endpoint de predicción responde como servicio no preparado.
+La API puede arrancar sin un modelo entrenado. En ese estado `/health` sigue disponible e informa `drg_model_ready: false`; las predicciones responden HTTP 503 hasta que los artefactos requeridos estén disponibles.
 
 ## Entrenamiento
 
-El pipeline histórico sigue disponible mientras se completa su extracción hacia una capa dedicada:
+Instala las dependencias del pipeline histórico:
+
+```bash
+uv sync --all-packages --group dev --group training
+```
+
+Ejecuta su entry point actual:
 
 ```bash
 uv run --group training python src/training/training_main.py --skip-lgbm
 ```
 
-Parámetros principales:
+Los artefactos generados localmente no deben versionarse.
 
-```text
---data-path PATH
---n-estimators N
---max-depth N
---skip-quality
---skip-lgbm
-```
-
-El entrenamiento genera localmente, entre otros artefactos:
-
-```text
-dataset/processed/metadata.pkl
-models/best_model.pkl
-```
-
-`metadata.pkl` es parte del contrato entre entrenamiento e inferencia: contiene los códigos y el orden real de las features usadas por el modelo.
-
-## Chatbot histórico
-
-La interfaz académica original se mantiene para compatibilidad:
+## Calidad
 
 ```bash
-uv run --group training --group legacy-chatbot python src/main.py
-```
-
-No es el transporte HTTP recomendado para nuevas funcionalidades; el desarrollo nuevo debe integrarse a `apps/api` y a los paquetes del dominio.
-
-## Pruebas
-
-```bash
-uv run pytest -q
 uv run ruff check apps packages tests
+uv run pytest -q
 ```
 
-GitHub Actions ejecuta ambas validaciones sobre Python 3.11 y 3.12.
+GitHub Actions ejecuta estas validaciones sobre Python 3.11 y 3.12.
 
-## Documentación
+## Contribución y seguridad
 
-La arquitectura y las reglas de evolución están documentadas en `docs/architecture/clinical-intelligence-platform.md`.
+- [Guía de contribución](.github/CONTRIBUTING.md)
+- [Política de seguridad](.github/SECURITY.md)
+- [Código de conducta](.github/CODE_OF_CONDUCT.md)
 
-## Aviso
+## Licencia
+
+Este repositorio se distribuye bajo la [MIT License](LICENSE).
+
+## Aviso clínico
 
 Este proyecto es de carácter académico y de ingeniería de software/ML. No constituye una herramienta de diagnóstico médico ni sustituye evaluación clínica profesional.
