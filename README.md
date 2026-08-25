@@ -34,15 +34,13 @@ packages/
   clinical-core/        contratos clínicos compartidos
   clinical-drg/         dominio e inferencia GRD
 dataset/                dataset fuente y artefactos locales generados
-docs/
-  architecture/         arquitectura vigente
-  testing/              estrategia de pruebas
+docs/                   documentación técnica viva
 notebook/               análisis exploratorio histórico
 src/                    compatibilidad temporal con el proyecto académico
 tests/                  pruebas automatizadas del workspace
 ```
 
-La arquitectura detallada y sus reglas de evolución están en [`docs/architecture/clinical-intelligence-platform.md`](docs/architecture/clinical-intelligence-platform.md).
+La arquitectura detallada y sus reglas de evolución están en [`docs/architecture.md`](docs/architecture.md).
 
 ## Requisitos
 
@@ -120,7 +118,7 @@ uv run ruff check apps packages tests
 uv run pytest -q
 ```
 
-La estrategia completa, incluyendo pruebas de API, dominio y contratos de entrenamiento, está documentada en [`docs/testing/testing-strategy.md`](docs/testing/testing-strategy.md).
+La estrategia completa, incluyendo pruebas de API, dominio y contratos de entrenamiento, está documentada en [`docs/testing.md`](docs/testing.md).
 
 ## Contribución y seguridad
 
