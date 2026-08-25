@@ -39,7 +39,11 @@ def test_encounters_round_trip_through_parquet(tmp_path):
 
 def test_duckdb_can_aggregate_drg_counts_from_parquet(tmp_path):
     path = tmp_path / "encounters.parquet"
-    write_encounters_parquet((sample_encounter(), sample_encounter().model_copy(update={"encounter_id": "h2"})), path)
+    encounters = (
+        sample_encounter(),
+        sample_encounter().model_copy(update={"encounter_id": "h2"}),
+    )
+    write_encounters_parquet(encounters, path)
     connection = open_analytics_database(path)
     try:
         rows = connection.execute(

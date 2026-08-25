@@ -48,6 +48,9 @@ pythonpath = [
   "packages/clinical-fhir/src",
   "packages/clinical-ml/src",
 ]
+markers = [
+  "spark: optional distributed Spark contract tests",
+]
 
 [tool.ruff]
 target-version = "py311"
@@ -56,3 +59,16 @@ exclude = ["notebook", "dataset", "src"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.isort]
+known-first-party = [
+  "clinical_api",
+  "clinical_core",
+  "clinical_data",
+  "clinical_drg",
+  "clinical_fhir",
+  "clinical_ml",
+  "clinical_runtime",
+  "clinical_training",
+  "tools",
+]

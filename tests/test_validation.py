@@ -9,13 +9,18 @@ from clinical_data.contracts import (
 )
 from clinical_data.validation import validate_encounters
 
+_DEFAULT_DIAGNOSES = (
+    ClinicalCode(code="I10", coding_system="ICD10CM", sequence=1),
+)
+_DEFAULT_TARGET = DRGTarget(code="291", system="MS-DRG")
+
 
 def make_encounter(
     encounter_id: str,
     *,
     patient_id: str = "p1",
-    diagnoses: tuple[ClinicalCode, ...] = (ClinicalCode(code="I10", coding_system="ICD10CM", sequence=1),),
-    target: DRGTarget | None = DRGTarget(code="291", system="MS-DRG"),
+    diagnoses: tuple[ClinicalCode, ...] = _DEFAULT_DIAGNOSES,
+    target: DRGTarget | None = _DEFAULT_TARGET,
 ) -> HospitalEncounter:
     return HospitalEncounter(
         encounter_id=encounter_id,
