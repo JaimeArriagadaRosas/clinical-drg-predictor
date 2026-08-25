@@ -23,10 +23,14 @@ dist/
 .env.*
 !.env.example
 
-# Generated model and data artifacts
+# Runtime clinical data and generated artifacts
+/data/raw/
+/data/interim/
+/data/processed/
+/artifacts/models/
+/artifacts/reports/
 models/
 dataset/processed/
-data/processed/
 outputs/
 *.pkl
 *.joblib
