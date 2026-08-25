@@ -5,11 +5,8 @@ import numpy as np
 from sklearn.dummy import DummyClassifier
 
 from clinical_core import GRDPredictionRequest
-from clinical_drg import (
-    GRDPredictor,
-    PredictorUnavailableError,
-    load_published_predictor,
-)
+from clinical_drg import GRDPredictor, PredictorUnavailableError, load_published_predictor
+from clinical_drg.published import PublishedFeatureExtractor
 
 
 class FakeExtractor:
@@ -48,6 +45,13 @@ def test_predictor_reports_unavailable_assets():
     except PredictorUnavailableError:
         return
     raise AssertionError("PredictorUnavailableError was not raised")
+
+
+def test_published_feature_extractor_keeps_diagnoses_and_procedures_separate():
+    extractor = PublishedFeatureExtractor(("dx:39.61", "px:39.61"))
+    features = extractor.create_features(icd10_codes=[], icd9_codes=["39.61"])
+
+    assert extractor.features_to_vector(features) == [0.0, 1.0]
 
 
 def test_published_artifact_loads_ready_predictor(tmp_path):

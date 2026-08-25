@@ -30,7 +30,11 @@ class PublishedFeatureExtractor:
     def features_to_vector(self, features: dict[str, Any]) -> list[float]:
         age = features.get("age")
         sex = str(features.get("sex") or "").upper()
-        diagnoses = set(features.get("icd10_codes") or ()) | set(features.get("icd9_codes") or ())
+        # Preserve the legacy structured prediction contract: ICD-10 values are
+        # diagnoses and ICD-9 values represent procedures. Do not activate the
+        # same ICD-9 value in both feature families; training keeps diagnoses
+        # and procedures as separate vocabularies.
+        diagnoses = set(features.get("icd10_codes") or ())
         procedures = set(features.get("icd9_codes") or ())
 
         values: dict[str, float] = {
