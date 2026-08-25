@@ -9,6 +9,7 @@ dependencies = []
 dev = [
   "httpx>=0.28.1",
   "pytest>=8.3.5",
+  "pyyaml>=6.0",
   "ruff>=0.11.0",
 ]
 training = [
@@ -25,8 +26,13 @@ legacy-chatbot = [
 [tool.uv.workspace]
 members = [
   "apps/api",
+  "apps/runtime",
+  "apps/training",
   "packages/clinical-core",
+  "packages/clinical-data",
   "packages/clinical-drg",
+  "packages/clinical-fhir",
+  "packages/clinical-ml",
 ]
 
 [tool.pytest.ini_options]
@@ -34,8 +40,16 @@ testpaths = ["tests"]
 pythonpath = [
   ".",
   "apps/api/src",
+  "apps/runtime/src",
+  "apps/training/src",
   "packages/clinical-core/src",
+  "packages/clinical-data/src",
   "packages/clinical-drg/src",
+  "packages/clinical-fhir/src",
+  "packages/clinical-ml/src",
+]
+markers = [
+  "spark: optional distributed Spark contract tests",
 ]
 
 [tool.ruff]
@@ -45,3 +59,16 @@ exclude = ["notebook", "dataset", "src"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.isort]
+known-first-party = [
+  "clinical_api",
+  "clinical_core",
+  "clinical_data",
+  "clinical_drg",
+  "clinical_fhir",
+  "clinical_ml",
+  "clinical_runtime",
+  "clinical_training",
+  "tools",
+]

@@ -1,108 +1,57 @@
 # Testing
 
-## Scope
+## Python
 
-This document describes the automated checks that exist in the repository today and the contracts they protect.
-
-## Test suite
-
-The repository currently contains four focused test modules under `tests/`.
-
-### API behavior
-
-`tests/test_api.py` verifies:
-
-- `/health` works even when model assets are missing;
-- a configured predictor is correctly exposed through the HTTP prediction endpoint;
-- prediction returns HTTP 503 when the predictor is unavailable.
-
-These tests instantiate FastAPI with injected fake dependencies, so they do not require trained model files.
-
-### GRD domain behavior
-
-`tests/test_drg_service.py` verifies:
-
-- `GRDPredictor` returns the expected domain result;
-- confidence is derived from model probabilities;
-- prediction fails with `PredictorUnavailableError` when required dependencies are absent.
-
-The model, encoder and feature extractor are replaced with deterministic fakes.
-
-### Training/inference schema compatibility
-
-`tests/test_feature_extractor_schema.py` protects the contract between training metadata and inference.
-
-It verifies:
-
-- inference vectors follow the feature order stored in `metadata.pkl`;
-- age values map to the expected preprocessing buckets.
-
-This test uses temporary metadata generated inside the test and does not depend on repository-local processed artifacts.
-
-### Training orchestration
-
-`tests/test_training_orchestration.py` verifies CLI argument routing in the historical training pipeline.
-
-It checks that:
-
-- `--data-path` is forwarded only to the data-loading stage;
-- model-specific options are forwarded only to the training stage;
-- optional values such as a missing `max_depth` are not forwarded incorrectly.
-
-## Running tests locally
-
-Install the development workspace:
+Run the normal lightweight suite without Spark:
 
 ```bash
-uv sync --all-packages --group dev
+uv run ruff check apps packages tools tests
+uv run pytest -q -m "not spark"
 ```
 
-Run the complete test suite:
+Coverage includes canonical encounter contracts, MIMIC mapping, dataset manifest/acquisition behavior, validation, EDA, Parquet/DuckDB, feature schemas, leakage-safe splitting, model training/evaluation, artifact publication, FHIR mapping, API behavior, runtime lifecycle and Training Workbench routing.
+
+## End-to-end training regression
 
 ```bash
-uv run pytest -q
+uv run pytest tests/test_e2e_training_demo.py -q
 ```
 
-Run linting over the maintained application, packages and tests:
+The E2E test is network-free and uses synthetic hospital encounters. It verifies:
+
+```text
+HospitalEncounter -> features -> patient split -> train -> evaluate
+-> publish -> load -> predict
+```
+
+It must never download MIMIC-IV in CI.
+
+## Frontend
 
 ```bash
-uv run ruff check apps packages tests
+pnpm --dir apps/web lint
+pnpm --dir apps/web test --run
+pnpm --dir apps/web build
 ```
 
-For changes that execute the historical training pipeline, also install the training dependency group:
+The UI tests explicitly protect the distinction between GRD model confidence and disease probability.
+
+## Spark contract
+
+Spark is tested separately to keep the standard CI path lightweight:
 
 ```bash
-uv sync --all-packages --group dev --group training
+uv run --with "pyspark>=4.0,<4.1" pytest tests/test_spark_engine_contract.py -q -m spark
 ```
 
-## Continuous integration
+The contract uses a tiny local Spark session and verifies Parquet interoperability. Delta functionality is configuration-gated and remains optional.
 
-`.github/workflows/ci.yml` runs on pushes to `main` and on pull requests.
+## CI jobs
 
-The CI matrix currently validates Python 3.11 and Python 3.12. For each version it:
+GitHub Actions runs independent jobs for:
 
-1. checks out the repository;
-2. installs Python;
-3. installs `uv`;
-4. synchronizes the workspace with development dependencies;
-5. runs Ruff;
-6. runs Pytest.
+1. Python quality on Python 3.11 and 3.12.
+2. Web lint/test/build on Node 22.
+3. Spark contract on Python 3.12 + Java 17.
 
-The CI commands are:
-
-```bash
-uv run ruff check apps packages tests
-uv run pytest -q
-```
-
-## Test design rules
-
-- Prefer dependency injection and small fakes over requiring trained model artifacts.
-- Keep tests deterministic and independent from local `.env` files.
-- Use temporary directories for generated metadata and fixtures.
-- Add regression coverage when changing API behavior, prediction orchestration, preprocessing metadata, feature ordering or training-stage argument routing.
-- Keep generated datasets and model artifacts out of the normal test path unless a deliberately small fixture is required.
-
-## Pull request expectation
-
-A behavior-changing pull request should pass the same Ruff and Pytest commands used by CI and include a regression test for the changed contract when practical.
+A merge is not considered ready while any required job is failing.

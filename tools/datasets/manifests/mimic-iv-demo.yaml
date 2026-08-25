@@ -1,0 +1,12 @@
+name: mimic-iv-demo
+version: "2.2"
+access: public-demo
+source: https://physionet.org/content/mimic-iv-demo/2.2/
+download_base: https://physionet.org/files/mimic-iv-demo/2.2
+license_url: https://physionet.org/content/mimic-iv-demo/2.2/
+files:
+  - hosp/admissions.csv.gz
+  - hosp/patients.csv.gz
+  - hosp/diagnoses_icd.csv.gz
+  - hosp/procedures_icd.csv.gz
+  - hosp/drgcodes.csv.gz

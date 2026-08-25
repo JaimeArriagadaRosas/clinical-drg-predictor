@@ -2,113 +2,176 @@
   <img src=".github/assets/readme-banner.svg" alt="Clinical Intelligence Platform" width="100%" />
 </p>
 
-<p align="center">
-  <a href="https://github.com/JaimeArriagadaRosas/clinical-drg-predictor/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/JaimeArriagadaRosas/clinical-drg-predictor/actions/workflows/ci.yml/badge.svg" /></a>
-  <img alt="Python" src="https://img.shields.io/badge/Python-3.11%20%7C%203.12-3776AB?logo=python&logoColor=white" />
-  <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-API-009688?logo=fastapi&logoColor=white" />
-  <img alt="License" src="https://img.shields.io/badge/License-MIT-green.svg" />
-</p>
-
 # Clinical Intelligence Platform
 
-Plataforma modular de ingeniería de datos y Machine Learning clínico para predicción de **Grupos Relacionados por Diagnóstico (GRD)**.
+Plataforma de ingeniería de datos y Machine Learning clínico orientada a **predicción de Grupos Relacionados por Diagnóstico (GRD)** a partir de episodios hospitalarios.
 
-El código actual está organizado como un workspace Python con una API FastAPI, contratos compartidos y una capa de inferencia GRD desacoplada del transporte HTTP. Parte del código académico original permanece temporalmente en `src/` mientras se completa su migración.
+El proyecto reconstruye una implementación académica previa como un monorepo moderno con pipeline reproducible de datos, entrenamiento offline, artefactos de modelo versionados, interoperabilidad FHIR y una aplicación de inferencia separada del Training Workbench.
 
-## Capacidades actuales
+## Flujo principal
 
-- API HTTP con FastAPI y OpenAPI.
-- Inferencia GRD desacoplada del transporte HTTP.
-- Contratos compartidos en paquetes reutilizables.
-- Arranque de la API incluso cuando los artefactos del modelo no están disponibles.
-- Compatibilidad entre el esquema de entrenamiento y el vector utilizado durante inferencia.
-- Pruebas automatizadas y CI para Python 3.11 y 3.12.
-- Gestión del workspace con `uv`.
+```text
+MIMIC-IV / datos hospitalarios autorizados
+  -> validación
+  -> EDA reproducible
+  -> limpieza / transformación
+  -> HospitalEncounter canónico
+  -> feature engineering versionado
+  -> split seguro contra leakage
+  -> entrenamiento y evaluación
+  -> publicación de modelo
+  -> FastAPI
+  -> React / interfaz conversacional
+```
 
-## Estructura
+La confianza reportada por el producto corresponde al **clasificador GRD**; no es una probabilidad de enfermedad ni constituye diagnóstico médico.
+
+## Stack
+
+- Python 3.11–3.13, `uv`, Pydantic
+- Polars, PyArrow/Parquet, DuckDB
+- scikit-learn, Random Forest, LightGBM opcional, MLflow
+- FastAPI + OpenAPI
+- React 19, TypeScript, Vite, Tailwind CSS
+- Typer + Rich para el Training Workbench
+- FHIR como frontera de interoperabilidad
+- PySpark 4.0.x + Delta Lake 4.0.x como extra distribuido opcional
+- pytest, Ruff, Vitest, Testing Library y GitHub Actions
+
+## Monorepo
 
 ```text
 apps/
-  api/                  aplicación FastAPI
+  api/          HTTP e inferencia
+  runtime/      lifecycle del producto: API + web
+  training/     Training Workbench interactivo
+  web/          interfaz clínica React/TypeScript
+
 packages/
-  clinical-core/        contratos compartidos
-  clinical-drg/         inferencia y orquestación GRD
-dataset/                dataset fuente y artefactos locales
-notebook/               análisis exploratorio histórico
-src/                    implementación académica aún utilizada por compatibilidad
-tests/                  pruebas automatizadas
-docs/                   documentación técnica vigente
+  clinical-core/  contratos compartidos de inferencia
+  clinical-data/  contratos de episodio, MIMIC, EDA, validación y motores de datos
+  clinical-ml/    features, splitting, entrenamiento, evaluación, tracking y publicación
+  clinical-drg/   capacidad predictiva GRD y carga de artefactos
+  clinical-fhir/  adaptadores FHIR -> HospitalEncounter
+
+tools/
+  datasets/       adquisición, importación y verificación de datasets
 ```
 
-Documentación técnica:
+## Datos
 
-- [Arquitectura](docs/architecture.md)
-- [Testing](docs/testing.md)
-- [Desarrollo](docs/development.md)
+Los datasets clínicos reales **no se versionan en Git**.
 
-## Requisitos
+Para trabajar con MIMIC-IV Demo:
 
-- Python 3.11 o 3.12 para paridad con CI
-- [`uv`](https://docs.astral.sh/uv/)
+```bash
+python tools/datasets/fetch.py mimic-iv-demo --destination data/raw/mimic-iv-demo
+```
 
-## Inicio rápido
+Para una copia completa de MIMIC-IV obtenida de forma autorizada:
 
-Instala el workspace:
+```bash
+python tools/datasets/fetch.py mimic-iv --destination data/raw/mimic-iv --from-directory /ruta/autorizada/mimic
+```
+
+El repositorio conserva manifests, validadores y fixtures sintéticos, no credenciales ni datasets restringidos.
+
+## Training Workbench
 
 ```bash
 uv sync --all-packages --group dev
+uv run clinical-train status
+uv run clinical-train run --stage eda
+uv run clinical-train run --all
 ```
 
-Inicia la API:
+Etapas del pipeline:
+
+```text
+acquire -> validate -> eda -> clean -> transform -> features -> split
+-> train -> evaluate -> select -> publish
+```
+
+`apps/training` sólo orquesta. La lógica de datos vive en `clinical-data` y la lógica de ML en `clinical-ml`.
+
+## Runtime del producto
 
 ```bash
-uv run uvicorn clinical_api.app:app --app-dir apps/api/src --reload
+uv run clinical-platform setup
+uv run clinical-platform preboot
+uv run clinical-platform run
 ```
 
-Endpoints actuales:
+El runtime gestiona únicamente:
+
+- API: `http://127.0.0.1:8000`
+- Web: `http://127.0.0.1:5173`
+
+El entrenamiento no es un proceso hijo del runtime de producción.
+
+## API
 
 ```text
 GET  /health
 POST /v1/predictions/drg
+POST /v1/predictions/drg/fhir
 ```
 
-La API puede arrancar sin un modelo entrenado. En ese estado `/health` sigue disponible e informa `drg_model_ready: false`; las predicciones responden HTTP 503 hasta que los artefactos requeridos estén disponibles.
+El predictor carga un artefacto publicado mediante `CLINICAL_MODEL_PATH` o la convención local `artifacts/models/current`. Si no existe un modelo válido, la API puede arrancar y `/health` informa `drg_model_ready: false` mientras los endpoints de predicción devuelven indisponibilidad.
 
-## Entrenamiento
+## FHIR
 
-Instala las dependencias del pipeline histórico:
+FHIR se utiliza como **frontera de interoperabilidad**, no como almacenamiento ni motor Big Data.
 
-```bash
-uv sync --all-packages --group dev --group training
+El adaptador actual transforma un Bundle con recursos relevantes —Patient, Encounter, Condition y Procedure— al contrato canónico `HospitalEncounter` antes de inferencia.
+
+## Escalado de datos
+
+El baseline local usa Polars + Parquet + DuckDB. Para cargas que justifiquen distribución existe un adapter opcional PySpark/Delta detrás del mismo contrato de motor.
+
+```text
+local:       Polars / DuckDB / Parquet
+scale-out:   PySpark DataFrames / Spark SQL / Delta Lake
 ```
 
-Ejecuta su entry point actual:
-
-```bash
-uv run --group training python src/training/training_main.py --skip-lgbm
-```
-
-Los artefactos generados localmente no deben versionarse.
+Spark no es necesario para el dataset pequeño ni para desarrollar el producto localmente.
 
 ## Calidad
 
+Python:
+
 ```bash
-uv run ruff check apps packages tests
-uv run pytest -q
+uv run ruff check apps packages tools tests
+uv run pytest -q -m "not spark"
 ```
 
-GitHub Actions ejecuta estas validaciones sobre Python 3.11 y 3.12.
+Frontend:
 
-## Contribución y seguridad
+```bash
+pnpm --dir apps/web lint
+pnpm --dir apps/web test --run
+pnpm --dir apps/web build
+```
 
-- [Guía de contribución](.github/CONTRIBUTING.md)
-- [Política de seguridad](.github/SECURITY.md)
-- [Código de conducta](.github/CODE_OF_CONDUCT.md)
+Spark contract:
 
-## Licencia
+```bash
+uv run --with "pyspark>=4.0,<4.1" pytest tests/test_spark_engine_contract.py -q -m spark
+```
 
-Este repositorio se distribuye bajo la [MIT License](LICENSE).
+CI ejecuta Python, web y Spark contract como jobs separados.
 
-## Aviso clínico
+## Documentación
 
-Este proyecto es de carácter académico y de ingeniería de software/ML. No constituye una herramienta de diagnóstico médico ni sustituye evaluación clínica profesional.
+- `docs/architecture.md`
+- `docs/development.md`
+- `docs/testing.md`
+- `docs/clinical-ml-platform-design.md`
+- `docs/superpowers/plans/2026-08-25-clinical-ml-platform.md`
+- `docs/superpowers/sdd/progress.md`
+
+## Licencia y aviso clínico
+
+El código del repositorio se distribuye bajo la licencia MIT. Los datasets externos mantienen sus propios términos de acceso y uso.
+
+Este proyecto es académico y de ingeniería de software/ML. No constituye una herramienta de diagnóstico médico ni sustituye evaluación clínica profesional.

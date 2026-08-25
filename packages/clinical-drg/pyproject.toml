@@ -5,7 +5,8 @@ description = "GRD prediction domain and inference orchestration"
 requires-python = ">=3.11,<3.14"
 dependencies = [
   "clinical-core",
-  "scikit-learn>=1.5,<2.0",
+  "joblib>=1.4,<2",
+  "scikit-learn>=1.6,<2.0",
 ]
 
 [tool.uv.sources]

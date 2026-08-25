@@ -1,0 +1,2 @@
+subject_id,hadm_id,seq_num,chartdate,icd_code,icd_version
+200001,100001,1,2025-01-02,0W3P8ZZ,10

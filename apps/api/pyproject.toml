@@ -6,6 +6,7 @@ requires-python = ">=3.11,<3.14"
 dependencies = [
   "clinical-core",
   "clinical-drg",
+  "clinical-fhir",
   "fastapi>=0.115.0",
   "uvicorn[standard]>=0.34.0",
 ]
@@ -13,6 +14,7 @@ dependencies = [
 [tool.uv.sources]
 clinical-core = { workspace = true }
 clinical-drg = { workspace = true }
+clinical-fhir = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

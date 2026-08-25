@@ -1,0 +1,11 @@
+name: mimic-iv
+version: "3.1"
+access: restricted-authorized
+source: PhysioNet MIMIC-IV 3.1
+license_url: PhysioNet MIMIC-IV 3.1 data use agreement
+files:
+  - hosp/admissions.csv.gz
+  - hosp/patients.csv.gz
+  - hosp/diagnoses_icd.csv.gz
+  - hosp/procedures_icd.csv.gz
+  - hosp/drgcodes.csv.gz
