@@ -31,6 +31,7 @@ members = [
   "packages/clinical-data",
   "packages/clinical-drg",
   "packages/clinical-fhir",
+  "packages/clinical-ml",
 ]
 
 [tool.pytest.ini_options]
@@ -43,6 +44,7 @@ pythonpath = [
   "packages/clinical-data/src",
   "packages/clinical-drg/src",
   "packages/clinical-fhir/src",
+  "packages/clinical-ml/src",
 ]
 
 [tool.ruff]
