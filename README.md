@@ -6,33 +6,40 @@
   <a href="https://github.com/JaimeArriagadaRosas/clinical-drg-predictor/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/JaimeArriagadaRosas/clinical-drg-predictor/actions/workflows/ci.yml/badge.svg" /></a>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.11%20%7C%203.12-3776AB?logo=python&logoColor=white" />
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-API-009688?logo=fastapi&logoColor=white" />
+  <img alt="React" src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=111" />
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white" />
   <img alt="License" src="https://img.shields.io/badge/License-MIT-green.svg" />
 </p>
 
 # Clinical Intelligence Platform
 
-Plataforma modular de ingeniería de datos y Machine Learning clínico para predicción de **Grupos Relacionados por Diagnóstico (GRD)**.
+Plataforma modular de ingeniería de datos y Machine Learning clínico para predicción de **Grupos Relacionados por Diagnóstico (GRD)**, soporte a decisión e interoperabilidad clínica.
 
-El código actual está organizado como un workspace Python con una API FastAPI, contratos compartidos y una capa de inferencia GRD desacoplada del transporte HTTP. Parte del código académico original permanece temporalmente en `src/` mientras se completa su migración.
+El proyecto moderniza una implementación académica previa con límites explícitos de aplicación, contratos reutilizables, frontend clínico independiente, runtime local y un adaptador FHIR acotado al caso de predicción actual.
 
 ## Capacidades actuales
 
 - API HTTP con FastAPI y OpenAPI.
+- Aplicación web con React, TypeScript, Vite y Tailwind CSS.
+- Runtime local con setup, preboot, consola interactiva y graceful shutdown.
 - Inferencia GRD desacoplada del transporte HTTP.
+- Adaptador FHIR para `Bundle` de un caso clínico con `Patient`, `Condition` y `Procedure`.
 - Contratos compartidos en paquetes reutilizables.
 - Arranque de la API incluso cuando los artefactos del modelo no están disponibles.
-- Compatibilidad entre el esquema de entrenamiento y el vector utilizado durante inferencia.
-- Pruebas automatizadas y CI para Python 3.11 y 3.12.
-- Gestión del workspace con `uv`.
+- Pruebas automatizadas y CI separado para Python y web.
+- Gestión Python con `uv` y frontend con `pnpm`.
 
 ## Estructura
 
 ```text
 apps/
   api/                  aplicación FastAPI
+  runtime/              lifecycle y consola local
+  web/                  interfaz clínica React/TypeScript
 packages/
   clinical-core/        contratos compartidos
   clinical-drg/         inferencia y orquestación GRD
+  clinical-fhir/        adaptadores de interoperabilidad FHIR
 dataset/                dataset fuente y artefactos locales
 notebook/               análisis exploratorio histórico
 src/                    implementación académica aún utilizada por compatibilidad
@@ -49,42 +56,55 @@ Documentación técnica:
 ## Requisitos
 
 - Python 3.11 o 3.12 para paridad con CI
-- [`uv`](https://docs.astral.sh/uv/)
+- Node.js 22
+- `uv`
+- `pnpm` 10
 
 ## Inicio rápido
 
-Instala el workspace:
+Instala ambos workspaces:
 
 ```bash
 uv sync --all-packages --group dev
+pnpm install
 ```
 
-Inicia la API:
+O utiliza el runtime:
 
 ```bash
-uv run uvicorn clinical_api.app:app --app-dir apps/api/src --reload
+uv run clinical-platform setup
+uv run clinical-platform preboot
+uv run clinical-platform run
 ```
+
+La consola interactiva permite gestionar servicios locales:
+
+```bash
+uv run clinical-platform console
+```
+
+La API queda en `http://127.0.0.1:8000` y la web en `http://127.0.0.1:5173`.
 
 Endpoints actuales:
 
 ```text
 GET  /health
 POST /v1/predictions/drg
+POST /v1/predictions/drg/fhir
 ```
 
-La API puede arrancar sin un modelo entrenado. En ese estado `/health` sigue disponible e informa `drg_model_ready: false`; las predicciones responden HTTP 503 hasta que los artefactos requeridos estén disponibles.
+El endpoint FHIR es un adaptador de interoperabilidad para el contrato de predicción actual; no pretende implementar un servidor FHIR completo.
+
+## Escala de datos
+
+El dataset académico actual se mantiene como fuente local pequeña. La arquitectura separa interoperabilidad de almacenamiento para permitir evolucionar hacia formatos columnares y procesamiento analítico sin introducir infraestructura distribuida mientras el volumen no lo justifique.
+
+FHIR se utiliza como frontera clínica. Para extracción masiva futura, el camino previsto es FHIR Bulk Data/NDJSON y procesamiento columnar; Kafka, Spark u otras tecnologías distribuidas sólo deben incorporarse cuando exista una necesidad de throughput, latencia o volumen medible.
 
 ## Entrenamiento
 
-Instala las dependencias del pipeline histórico:
-
 ```bash
 uv sync --all-packages --group dev --group training
-```
-
-Ejecuta su entry point actual:
-
-```bash
 uv run --group training python src/training/training_main.py --skip-lgbm
 ```
 
@@ -95,9 +115,9 @@ Los artefactos generados localmente no deben versionarse.
 ```bash
 uv run ruff check apps packages tests
 uv run pytest -q
+pnpm web:lint
+pnpm web:build
 ```
-
-GitHub Actions ejecuta estas validaciones sobre Python 3.11 y 3.12.
 
 ## Contribución y seguridad
 
