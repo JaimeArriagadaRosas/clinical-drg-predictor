@@ -1,0 +1,2 @@
+subject_id,hadm_id,admittime,dischtime,discharge_location
+200001,100001,2025-01-01 08:00:00,2025-01-04 10:00:00,HOME

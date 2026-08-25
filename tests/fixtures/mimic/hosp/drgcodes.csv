@@ -1,0 +1,3 @@
+subject_id,hadm_id,drg_type,drg_code,description,drg_severity,drg_mortality
+200001,100001,HCFA,291,HEART FAILURE AND SHOCK WITH MCC,,
+200001,100001,APR,194,HEART FAILURE,2,1
