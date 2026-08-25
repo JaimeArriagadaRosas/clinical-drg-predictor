@@ -30,4 +30,14 @@ Task 13: complete (commit 99beab7 — FHIR adapter aligned to canonical `Hospita
 Task 14: complete (commit 4269e20 — product runtime restricted to API/web and conversational extraction separated from prediction).
 Task 15: complete (commit 17d0b0a — web components aligned to encounter -> GRD workflow with confidence semantics test).
 Task 16: complete (commit 9c55b00 — optional Spark/Delta engine and dedicated Spark CI contract).
-Task 17: implementation complete (commit fdba8ce — offline E2E training regression and final architecture/development/testing docs); final CI/review pending.
+Task 17: complete (commit fdba8ce — offline E2E training regression and final architecture/development/testing docs).
+
+Final integration fixes:
+- `123ffd7`: CI quality configuration corrected without relaxing lint/test policy.
+- `717cda4`: lint formatting and web confidence regression semantics aligned.
+- `232fae0`: FHIR canonical test, SQLite-backed MLflow tracking, Typer group routing and Vite typing fixed.
+- `6586809`: final review fixed diagnosis/procedure role contamination in published-model inference and added regression coverage.
+- `b6cfe05..0654ead`: final review added the authorized full MIMIC-IV manifest and made the documented `mimic-iv --from-directory` path executable and tested.
+
+Final review: no remaining Critical or Important findings after the published-inference and full-MIMIC-import corrections.
+Final verification: GitHub Actions run 32859015410 on head `0654ead1ff1f7221d297496ef4a693832b93cf77` passed Python 3.11 quality/tests, Python 3.12 quality/tests, web lint/test/build, and Spark contract.
