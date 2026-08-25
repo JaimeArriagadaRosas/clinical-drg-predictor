@@ -1,3 +1,4 @@
+import os
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
@@ -5,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from clinical_core import GRDPredictionRequest
-from clinical_drg import GRDPredictor, PredictorUnavailableError, load_legacy_predictor
+from clinical_drg import GRDPredictor, PredictorUnavailableError, load_published_predictor
 from clinical_fhir import FHIRAdapterError, prediction_request_from_bundle
 
 
@@ -23,11 +24,16 @@ class GRDPredictionResponse(BaseModel):
     model_version: str
 
 
+def _default_predictor() -> GRDPredictor:
+    model_path = os.getenv("CLINICAL_MODEL_PATH", "artifacts/models/current")
+    return load_published_predictor(model_path)
+
+
 def create_app(predictor: GRDPredictor | None = None) -> FastAPI:
-    drg_predictor = predictor or load_legacy_predictor()
+    drg_predictor = predictor or _default_predictor()
     api = FastAPI(
         title="Clinical Intelligence Platform API",
-        version="0.2.0",
+        version="0.3.0",
         description="Modular API for clinical ML inference and interoperability.",
     )
     api.add_middleware(
