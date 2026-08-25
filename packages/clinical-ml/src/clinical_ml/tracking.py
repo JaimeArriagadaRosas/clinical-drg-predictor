@@ -13,7 +13,8 @@ class ExperimentTracker(Protocol):
 class MLflowTracker:
     def __init__(self, tracking_dir: Path, experiment_name: str = "clinical-grd") -> None:
         tracking_dir.mkdir(parents=True, exist_ok=True)
-        mlflow.set_tracking_uri(tracking_dir.resolve().as_uri())
+        database_path = (tracking_dir / "mlflow.db").resolve()
+        mlflow.set_tracking_uri(f"sqlite:///{database_path.as_posix()}")
         mlflow.set_experiment(experiment_name)
         self.experiment_name = experiment_name
 

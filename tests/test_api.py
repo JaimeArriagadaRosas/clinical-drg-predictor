@@ -55,6 +55,19 @@ def test_fhir_prediction_uses_the_same_domain_predictor():
             "entry": [
                 {
                     "resource": {
+                        "resourceType": "Patient",
+                        "id": "patient-1",
+                        "gender": "female",
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "Encounter",
+                        "id": "encounter-1",
+                    }
+                },
+                {
+                    "resource": {
                         "resourceType": "Condition",
                         "code": {
                             "coding": [
@@ -62,7 +75,7 @@ def test_fhir_prediction_uses_the_same_domain_predictor():
                             ]
                         },
                     }
-                }
+                },
             ],
         },
     )

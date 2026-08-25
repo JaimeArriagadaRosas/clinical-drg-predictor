@@ -7,6 +7,11 @@ app = typer.Typer(no_args_is_help=True, help="Clinical GRD Training Workbench")
 console = Console()
 
 
+@app.callback()
+def main() -> None:
+    """Clinical GRD Training Workbench."""
+
+
 def create_pipeline() -> TrainingPipeline:
     return TrainingPipeline()
 
