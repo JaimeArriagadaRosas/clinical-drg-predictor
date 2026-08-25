@@ -1,7 +1,11 @@
-import { FormEvent, useMemo, useState } from 'react'
+import { type FormEvent, useMemo, useState } from 'react'
 
 import { predictDrg, type PredictionResponse } from './api'
-import { ArrowIcon, ClinicalIcon, DatabaseIcon, HistoryIcon, ModelIcon } from './icons'
+import { ClinicalIntakePanel } from './components/ClinicalIntakePanel'
+import { EncounterSummary } from './components/EncounterSummary'
+import { ModelStatus } from './components/ModelStatus'
+import { PredictionPanel } from './components/PredictionPanel'
+import { ClinicalIcon, DatabaseIcon, HistoryIcon, ModelIcon } from './icons'
 
 const parseCodes = (value: string) =>
   value
@@ -18,10 +22,9 @@ export default function App() {
   const [error, setError] = useState('')
   const [pending, setPending] = useState(false)
 
-  const evidenceCount = useMemo(
-    () => parseCodes(icd10).length + parseCodes(icd9).length,
-    [icd10, icd9],
-  )
+  const icd10Codes = useMemo(() => parseCodes(icd10), [icd10])
+  const icd9Codes = useMemo(() => parseCodes(icd9), [icd9])
+  const evidenceCount = icd10Codes.length + icd9Codes.length
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -30,8 +33,8 @@ export default function App() {
     try {
       const numericAge = age === '' ? undefined : Number(age)
       const prediction = await predictDrg({
-        icd10_codes: parseCodes(icd10),
-        icd9_codes: parseCodes(icd9),
+        icd10_codes: icd10Codes,
+        icd9_codes: icd9Codes,
         ...(numericAge === undefined ? {} : { age: numericAge }),
         ...(sex === '' ? {} : { sex }),
       })
@@ -54,7 +57,7 @@ export default function App() {
             <h1>GRD Decision Support</h1>
           </div>
         </div>
-        <div className="system-state"><span className="status-dot" /> API local</div>
+        <ModelStatus />
       </header>
 
       <div className="workspace">
@@ -73,83 +76,23 @@ export default function App() {
         </aside>
 
         <main className="main-grid" id="evaluation">
-          <section className="evaluation-panel">
-            <div className="section-heading">
-              <p className="eyebrow">Nueva evaluación</p>
-              <h2>Contexto clínico estructurado</h2>
-              <p>Ingresa las variables que consume el modelo GRD. Los códigos pueden separarse por espacios, comas o punto y coma.</p>
-            </div>
-
-            <form className="clinical-form" onSubmit={handleSubmit}>
-              <div className="field-grid two-columns">
-                <label>
-                  <span>Edad</span>
-                  <input min="0" max="120" inputMode="numeric" type="number" value={age} onChange={(event) => setAge(event.target.value)} placeholder="65" />
-                </label>
-                <label>
-                  <span>Sexo</span>
-                  <select value={sex} onChange={(event) => setSex(event.target.value as 'M' | 'F' | '')}>
-                    <option value="">No informado</option>
-                    <option value="F">Femenino</option>
-                    <option value="M">Masculino</option>
-                  </select>
-                </label>
-              </div>
-
-              <label>
-                <span>ICD-10</span>
-                <textarea rows={4} value={icd10} onChange={(event) => setIcd10(event.target.value)} placeholder="E11.9, I10" />
-              </label>
-              <label>
-                <span>ICD-9 / procedimientos</span>
-                <textarea rows={3} value={icd9} onChange={(event) => setIcd9(event.target.value)} placeholder="39.61" />
-              </label>
-
-              <div className="form-footer">
-                <div className="evidence-summary">
-                  <span>{evidenceCount}</span>
-                  <small>códigos clínicos cargados</small>
-                </div>
-                <button type="submit" disabled={pending}>
-                  {pending ? 'Analizando…' : 'Analizar caso'} <ArrowIcon />
-                </button>
-              </div>
-            </form>
-          </section>
-
-          <aside className="result-panel" aria-live="polite">
-            <div className="section-heading compact">
-              <p className="eyebrow">Resultado</p>
-              <h2>Predicción GRD</h2>
-            </div>
-
-            {result ? (
-              <div className="prediction-result">
-                <div className="result-code">{result.label}</div>
-                <div className="confidence-block">
-                  <strong>{(result.confidence * 100).toFixed(1)}%</strong>
-                  <span>confianza del modelo</span>
-                </div>
-                <dl className="model-metadata">
-                  <div><dt>Modelo</dt><dd>{result.model_name}</dd></div>
-                  <div><dt>Versión</dt><dd>{result.model_version}</dd></div>
-                </dl>
-              </div>
-            ) : (
-              <div className="empty-result">
-                <ModelIcon />
-                <strong>Sin predicción todavía</strong>
-                <p>El resultado aparecerá aquí sin reemplazar el contexto ingresado.</p>
-              </div>
-            )}
-
-            {error && <div className="error-message" role="alert">{error}</div>}
-
-            <div className="clinical-disclaimer">
-              <strong>Uso académico</strong>
-              <p>Esta interfaz demuestra soporte a decisión e interoperabilidad. No constituye diagnóstico médico ni sustituye evaluación profesional.</p>
-            </div>
-          </aside>
+          <div>
+            <ClinicalIntakePanel
+              age={age}
+              sex={sex}
+              icd10={icd10}
+              icd9={icd9}
+              pending={pending}
+              evidenceCount={evidenceCount}
+              onAgeChange={setAge}
+              onSexChange={setSex}
+              onIcd10Change={setIcd10}
+              onIcd9Change={setIcd9}
+              onSubmit={handleSubmit}
+            />
+            <EncounterSummary age={age} sex={sex} icd10Codes={icd10Codes} icd9Codes={icd9Codes} />
+          </div>
+          <PredictionPanel result={result} error={error} evidenceCount={evidenceCount} />
         </main>
       </div>
     </div>
