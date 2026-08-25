@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from tools.datasets.fetch import acquire_public_dataset, import_authorized_dataset
+from tools.datasets.fetch import acquire_public_dataset, build_parser, import_authorized_dataset
 
 MANIFEST = Path("tools/datasets/manifests/mimic-iv-demo.yaml")
 REQUIRED = (
@@ -43,3 +43,18 @@ def test_authorized_import_verifies_and_copies_manifest_files(tmp_path: Path):
 
     assert all((destination / relative).is_file() for relative in REQUIRED)
     assert json.loads(receipt.read_text(encoding="utf-8"))["mode"] == "authorized-import"
+
+
+def test_cli_accepts_authorized_full_mimic_import_paths(tmp_path: Path):
+    args = build_parser().parse_args(
+        [
+            "mimic-iv",
+            "--destination",
+            str(tmp_path / "destination"),
+            "--from-directory",
+            str(tmp_path / "source"),
+        ]
+    )
+
+    assert args.dataset == "mimic-iv"
+    assert args.from_directory == tmp_path / "source"

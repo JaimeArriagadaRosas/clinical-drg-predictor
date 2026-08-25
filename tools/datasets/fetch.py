@@ -11,6 +11,7 @@ from pathlib import Path
 from tools.datasets.verify import load_manifest, verify_dataset
 
 Downloader = Callable[[str, Path], None]
+SUPPORTED_DATASETS = ("mimic-iv-demo", "mimic-iv")
 
 
 def _http_download(url: str, destination: Path) -> None:
@@ -82,7 +83,7 @@ def _write_receipt(destination: Path, manifest: dict, *, mode: str) -> Path:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Acquire or import clinical datasets")
-    parser.add_argument("dataset", choices=["mimic-iv-demo"])
+    parser.add_argument("dataset", choices=SUPPORTED_DATASETS)
     parser.add_argument("--destination", type=Path, required=True)
     parser.add_argument("--from-directory", type=Path)
     return parser
@@ -93,8 +94,10 @@ def main() -> None:
     manifest = Path(__file__).parent / "manifests" / f"{args.dataset}.yaml"
     if args.from_directory:
         import_authorized_dataset(args.from_directory, args.destination, manifest)
-    else:
+    elif args.dataset == "mimic-iv-demo":
         acquire_public_dataset(manifest, args.destination)
+    else:
+        raise SystemExit("full MIMIC-IV must be supplied with --from-directory")
 
 
 if __name__ == "__main__":
