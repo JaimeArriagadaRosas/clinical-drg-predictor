@@ -1,7 +1,6 @@
-from fastapi.testclient import TestClient
-
 from clinical_api.app import create_app
 from clinical_drg import GRDPredictor
+from fastapi.testclient import TestClient
 
 
 class FakeExtractor:

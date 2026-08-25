@@ -1,5 +1,5 @@
-"""API module for GRD Prediction Chatbot."""
+"""Legacy API compatibility package.
 
-from .gemini_api import GeminiClient, create_client
-
-__all__ = ['GeminiClient', 'create_client']
+Submodules are intentionally not imported here so lightweight utilities such as
+``feature_extractor`` do not require optional chatbot dependencies.
+"""
