@@ -27,6 +27,7 @@ members = [
   "apps/api",
   "apps/runtime",
   "packages/clinical-core",
+  "packages/clinical-data",
   "packages/clinical-drg",
   "packages/clinical-fhir",
 ]
@@ -38,6 +39,7 @@ pythonpath = [
   "apps/api/src",
   "apps/runtime/src",
   "packages/clinical-core/src",
+  "packages/clinical-data/src",
   "packages/clinical-drg/src",
   "packages/clinical-fhir/src",
 ]
