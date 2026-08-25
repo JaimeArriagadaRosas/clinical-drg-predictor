@@ -1,0 +1,25 @@
+[project]
+name = "clinical-training"
+version = "0.1.0"
+description = "Interactive Training Workbench for the Clinical Intelligence Platform"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+  "clinical-data",
+  "clinical-ml",
+  "rich>=14,<15",
+  "typer>=0.16,<1",
+]
+
+[project.scripts]
+clinical-train = "clinical_training.cli:app"
+
+[tool.uv.sources]
+clinical-data = { workspace = true }
+clinical-ml = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/clinical_training"]
