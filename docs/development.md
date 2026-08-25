@@ -1,99 +1,74 @@
 # Development
 
-## Requirements
+## Prerequisites
 
-The workspace supports Python 3.11 through Python 3.13 according to the root project configuration. Continuous integration currently validates Python 3.11 and 3.12.
+- Python 3.11 or 3.12 for CI parity
+- `uv`
+- Node.js 22
+- `pnpm` 10
+- Java 17 only when running the optional Spark contract
 
-The repository uses `uv` for workspace and dependency management.
-
-## Install the workspace
-
-For API, package and test development:
+## Setup
 
 ```bash
 uv sync --all-packages --group dev
+pnpm install
 ```
 
-For work involving the historical training pipeline:
+## Clinical data
+
+Real clinical datasets are external runtime assets. Do not commit raw, interim, processed or model artifact directories.
+
+Public demo acquisition:
 
 ```bash
-uv sync --all-packages --group dev --group training
+python tools/datasets/fetch.py mimic-iv-demo --destination data/raw/mimic-iv-demo
 ```
 
-For work involving the historical Flask/Gemini chatbot:
+Authorized full MIMIC import:
 
 ```bash
-uv sync --all-packages --group training --group legacy-chatbot
+python tools/datasets/fetch.py mimic-iv --destination data/raw/mimic-iv --from-directory /path/to/mimic
 ```
 
-## Run the API
+The import path verifies an already-authorized local tree. It never bypasses PhysioNet credentials or data-use requirements.
 
-Start the FastAPI application from the repository root:
+## Product runtime
 
 ```bash
-uv run uvicorn clinical_api.app:app --app-dir apps/api/src --reload
+uv run clinical-platform preboot
+uv run clinical-platform run
 ```
 
-The API exposes:
+`clinical-platform run` owns API + web only. Training belongs to the Training Workbench.
 
-```text
-GET  /health
-POST /v1/predictions/drg
-```
-
-The API does not require trained model assets to start. If the predictor cannot load its local artifacts, `/health` still responds and reports `drg_model_ready: false`.
-
-## Run the training pipeline
-
-The current training entry point remains under the historical `src/` tree:
+## Training Workbench
 
 ```bash
-uv run --group training python src/training/training_main.py --skip-lgbm
+uv run clinical-train status
+uv run clinical-train run --stage validate
+uv run clinical-train run --stage eda
+uv run clinical-train run --all
 ```
 
-Training-related changes should be validated against the orchestration and feature-schema tests.
+Application code in `apps/training` should only orchestrate package APIs. Put reusable data operations in `clinical-data` and reusable ML behavior in `clinical-ml`.
 
-## Optional environment configuration
+## Model artifacts
 
-`.env.example` contains settings used by the historical Gemini integration.
+Published artifacts live under `artifacts/models/` and are gitignored. Use `CLINICAL_MODEL_PATH` to point the API at an explicit published model directory.
 
-Create a local `.env` only when that integration is required:
+Do not reintroduce implicit dependencies on historical `models/best_model.pkl` or `dataset/processed/*` paths.
 
-```bash
-cp .env.example .env
-```
+## Distributed data processing
 
-On Windows PowerShell:
+Install/use distributed dependencies only when needed. The supported compatibility line is Spark 4.0.x with Delta Lake 4.0.x.
 
-```powershell
-Copy-Item .env.example .env
-```
+The local path remains the source of truth for correctness. Spark is an execution adapter, not a second pipeline.
 
-Never commit `.env` or real API keys.
+## Contribution rules
 
-## Quality checks
-
-Run the same core checks used by CI:
-
-```bash
-uv run ruff check apps packages tests
-uv run pytest -q
-```
-
-Ruff currently targets maintained code under `apps`, `packages` and `tests`; the root configuration excludes the historical `src`, `dataset` and `notebook` trees from Ruff.
-
-## Workspace boundaries
-
-When adding new code:
-
-- executable HTTP composition belongs under `apps/api`;
-- reusable clinical contracts belong in `packages/clinical-core`;
-- reusable GRD prediction behavior belongs in `packages/clinical-drg`;
-- avoid adding new functionality to `src/` unless it is specifically part of maintaining or migrating the historical implementation;
-- add tests under `tests/` for externally visible behavior and shared contracts.
-
-## Generated files
-
-The repository ignores generated ML and data artifacts such as processed datasets, model files, caches and local environments.
-
-Do not commit generated artifacts unless they are intentionally introduced as a small reviewed test fixture.
+- keep application boundaries narrow;
+- prefer immutable/domain contracts;
+- add focused tests for behavior changes;
+- do not add a new package or service without an implemented responsibility;
+- preserve granular commits for this reconstruction; do not squash the integration PR.
