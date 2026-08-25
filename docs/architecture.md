@@ -2,143 +2,131 @@
 
 ## Scope
 
-This document describes the architecture that exists in the repository today. It is intentionally limited to implemented boundaries and current runtime behavior.
+This document describes the architecture implemented in the repository today. It intentionally separates application composition, reusable clinical behavior, interoperability adapters and historical compatibility code.
 
 ## Repository model
-
-The project is organized as a Python monorepo managed with a `uv` workspace.
 
 ```text
 apps/
   api/
+  runtime/
+  web/
 packages/
   clinical-core/
   clinical-drg/
+  clinical-fhir/
 src/
 tests/
 ```
 
-`apps/` contains executable application composition, while `packages/` contains reusable code with clearer dependency boundaries. The historical `src/` tree is still present because parts of the original academic implementation remain in use.
+`apps/` owns executable application boundaries. `packages/` owns reusable behavior. The historical `src/` tree remains only for compatibility while concrete functionality is migrated.
 
-## Components
+## Application boundaries
 
 ### `apps/api`
 
-The FastAPI application lives in `apps/api/src/clinical_api/app.py`.
-
-Its responsibilities are limited to HTTP concerns:
-
-- request validation;
-- response serialization;
-- route definition;
-- HTTP error mapping;
-- dependency composition.
+FastAPI owns HTTP concerns only: validation, serialization, route definition, CORS for the local development web client, error mapping and dependency composition.
 
 Current endpoints:
 
 ```text
 GET  /health
 POST /v1/predictions/drg
+POST /v1/predictions/drg/fhir
 ```
 
-`GET /health` reports API liveness and whether the GRD predictor is ready.
+Both prediction endpoints converge on the same `GRDPredictionRequest` domain contract before calling `clinical-drg`.
 
-`POST /v1/predictions/drg` accepts ICD-10 codes, ICD-9 codes, age and sex. The HTTP layer converts the payload into the shared domain request and delegates prediction to `clinical-drg`.
+### `apps/web`
+
+The browser application uses React, TypeScript, Vite and Tailwind CSS. It owns presentation and user interaction and consumes the API over HTTP.
+
+The current design follows a clinical utility/evidence-first direction: structured context, persistent prediction results, restrained semantic color and SVG iconography. It does not contain prediction logic.
+
+### `apps/runtime`
+
+The local runtime owns developer lifecycle orchestration. It performs preboot checks, starts and stops API/web processes, provides an interactive console and performs graceful shutdown on termination signals.
+
+It is not a domain package and does not contain clinical behavior.
+
+## Package boundaries
 
 ### `packages/clinical-core`
 
-`clinical-core` defines shared immutable contracts used across the application.
-
-Current contracts include:
-
-- `GRDPredictionRequest`;
-- `PredictionResult`.
-
-This package does not own HTTP routing or model-loading behavior.
+Defines immutable shared contracts such as `GRDPredictionRequest` and `PredictionResult`. It does not depend on FastAPI, frontend code, model loading or FHIR.
 
 ### `packages/clinical-drg`
 
-`clinical-drg` owns the GRD prediction orchestration.
+Owns prediction orchestration. `GRDPredictor` receives model, label encoder and feature extractor dependencies and returns a domain `PredictionResult`.
 
-`GRDPredictor` receives three dependencies:
+The current `load_legacy_predictor()` adapter still bridges to historical model artifacts and feature extraction code.
 
-- model;
-- label encoder;
-- feature extractor.
+### `packages/clinical-fhir`
 
-A predictor is considered ready only when all three are available. Prediction performs feature creation, vector conversion, model inference, probability lookup and label decoding before returning a `PredictionResult`.
+Owns interoperability adapters between FHIR-shaped input and internal domain contracts.
 
-The package also contains `load_legacy_predictor()`, which adapts the current historical model artifacts into the new package boundary.
+The implemented adapter intentionally supports only the subset required by the current predictor: a single-patient `Bundle` containing `Patient`, `Condition` and `Procedure` resources. It extracts age, administrative sex and recognized ICD coding systems and returns `GRDPredictionRequest`.
 
-### `src/`
-
-The `src/` tree still contains implementation inherited from the academic project, including the feature extractor and training flow used by compatibility code.
-
-New application boundaries should prefer `apps/` and `packages/`. Existing `src/` code should be migrated only when there is a concrete refactor or feature that requires it.
+This package is not a generic FHIR validator, repository, terminology server or full FHIR server.
 
 ## Dependency flow
 
 ```text
-HTTP client
-    |
-    v
-apps/api
-    |
-    +--> clinical-core
-    |
-    v
-clinical-drg
-    |
-    +--> clinical-core
-    |
-    v
+browser
+  |
+  v
+apps/web
+  |
+  v
+apps/api ------------------> clinical-fhir
+  |                              |
+  |                              v
+  +------------------------> clinical-core
+  |
+  v
+clinical-drg --------------> clinical-core
+  |
+  v
 legacy adapter -> src/api/feature_extractor.py
 ```
 
-The HTTP application depends on domain packages. Domain orchestration does not depend on FastAPI.
+`apps/runtime` sits outside the clinical dependency flow and manages executable processes only.
+
+## Data scale and interoperability
+
+FHIR and data-processing scale are separate concerns.
+
+FHIR is used as an interoperability boundary. The current local dataset remains appropriate for in-process/tabular processing. Distributed infrastructure should not be introduced solely to make the project appear to be a Big Data system.
+
+The intended evolution path is:
+
+1. local CSV/Excel-compatible ingestion for small academic or institutional extracts;
+2. Parquet/NDJSON and an analytical engine such as DuckDB when columnar queries and larger local datasets justify it;
+3. FHIR Bulk Data for population-scale interchange where a FHIR ecosystem is available;
+4. streaming or distributed engines only when measurable throughput, latency or data-volume requirements justify them.
 
 ## Runtime readiness
 
-The API can start without trained model artifacts.
+The API can start without trained model artifacts. `/health` remains available and reports `drg_model_ready: false`; prediction endpoints return HTTP 503 until required assets are available.
 
-`load_legacy_predictor()` attempts to load:
-
-```text
-models/best_model.pkl
-dataset/processed/label_encoder.pkl
-```
-
-and instantiate the historical feature extractor. If any part of that process fails, it returns an unavailable `GRDPredictor` instead of preventing API startup.
-
-This produces two distinct runtime states:
-
-- API alive, GRD predictor ready;
-- API alive, GRD predictor unavailable.
-
-When the predictor is unavailable, `/health` remains successful with `drg_model_ready: false`, while prediction requests return HTTP 503.
-
-## Training/inference schema contract
-
-The current inference feature extractor reads training metadata from `dataset/processed/metadata.pkl`.
-
-That metadata controls the feature order used to build inference vectors. The corresponding regression tests verify that inference preserves the training schema and age-bucket mapping.
-
-Changes to preprocessing or feature metadata therefore affect both training and inference and must be treated as a shared contract.
+The local runtime adds a second readiness layer before starting processes: supported Python, `uv`, `pnpm`, and required application boundaries must be present.
 
 ## Architectural rules
 
 - Keep HTTP-specific logic inside `apps/api`.
-- Keep reusable prediction behavior inside `packages/`.
-- Keep `clinical-core` free of FastAPI and model-loading concerns.
-- Do not create additional top-level services or packages without implemented responsibilities.
-- Do not describe the system as microservices while it runs as one application boundary.
-- Preserve API startup when optional model artifacts are unavailable.
-- Protect changes to training metadata or feature ordering with regression tests.
+- Keep browser presentation inside `apps/web`.
+- Keep lifecycle/process orchestration inside `apps/runtime`.
+- Keep reusable clinical prediction behavior inside `packages/`.
+- Keep `clinical-core` free of transport, persistence and model-loading concerns.
+- Keep FHIR conversion in `clinical-fhir`; do not leak FHIR resource dictionaries into prediction packages.
+- Do not add Kafka, Spark, Hadoop, databases or additional services without a demonstrated requirement.
+- Do not describe the system as microservices while it is deployed as one local platform boundary.
+- Protect training/inference metadata and interoperability mappings with regression tests.
 
 ## Current limitations
 
-- The GRD package still depends on a compatibility adapter that imports the historical feature extractor from `src/`.
-- Model artifacts are loaded from local filesystem paths rather than a dedicated model registry.
-- The training implementation has not yet been fully extracted into the new package layout.
-
-These are current implementation constraints, not separate architectural components.
+- The GRD package still imports the historical feature extractor through a compatibility adapter.
+- Training has not yet been extracted from `src/` into a maintained application/package boundary.
+- Model assets are loaded from the local filesystem rather than a model registry.
+- The FHIR adapter covers only the fields required by the current predictor and does not perform full profile validation.
+- The data layer has not yet been abstracted into small-data and columnar analytical adapters.
