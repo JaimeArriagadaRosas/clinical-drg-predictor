@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Protocol
-
-import polars as pl
+from typing import Any, Protocol
 
 
 class DataEngine(Protocol):
     name: str
 
-    def scan_csv(self, path: Path) -> pl.LazyFrame: ...
+    def scan_csv(self, path: Path) -> Any: ...
 
-    def collect(self, frame: pl.LazyFrame) -> pl.DataFrame: ...
+    def collect(self, frame: Any) -> Any: ...

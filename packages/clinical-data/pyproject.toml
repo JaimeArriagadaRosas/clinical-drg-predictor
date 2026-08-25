@@ -10,6 +10,12 @@ dependencies = [
   "pydantic>=2.11,<3",
 ]
 
+[project.optional-dependencies]
+distributed = [
+  "pyspark>=4.0,<4.1",
+  "delta-spark>=4.0,<4.1",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
