@@ -11,122 +11,99 @@
 
 # Clinical Intelligence Platform
 
-Plataforma modular de ingeniería de datos y Machine Learning clínico para predicción de **Grupos Relacionados por Diagnóstico (GRD)**, evolucionada desde un proyecto académico hacia una base reproducible de ML Engineering y analítica clínica.
+Plataforma modular de ingeniería de datos y Machine Learning clínico para predicción de **Grupos Relacionados por Diagnóstico (GRD)**.
 
-El repositorio conserva la capacidad de clasificación GRD original, pero organiza el desarrollo nuevo mediante un **monorepo Python** y un **monolito modular** con límites explícitos entre transporte HTTP, contratos compartidos e inferencia.
+El código actual está organizado como un workspace Python con una API FastAPI, contratos compartidos y una capa de inferencia GRD desacoplada del transporte HTTP. Parte del código académico original permanece temporalmente en `src/` mientras se completa su migración.
 
 ## Capacidades actuales
 
-- API HTTP oficial con FastAPI y OpenAPI.
+- API HTTP con FastAPI y OpenAPI.
 - Inferencia GRD desacoplada del transporte HTTP.
-- Contratos clínicos compartidos en paquetes reutilizables.
-- Compatibilidad temporal con el pipeline y chatbot académicos existentes.
-- Reutilización del esquema real de entrenamiento durante inferencia mediante `dataset/processed/metadata.pkl`.
-- Pruebas automatizadas y CI sobre Python 3.11 y 3.12.
-- Gestión reproducible del workspace con `uv`.
+- Contratos compartidos en paquetes reutilizables.
+- Arranque de la API incluso cuando los artefactos del modelo no están disponibles.
+- Compatibilidad entre el esquema de entrenamiento y el vector utilizado durante inferencia.
+- Pruebas automatizadas y CI para Python 3.11 y 3.12.
+- Gestión del workspace con `uv`.
 
-## Arquitectura del repositorio
+## Estructura
 
 ```text
 apps/
-  api/                  FastAPI y composición HTTP
+  api/                  aplicación FastAPI
 packages/
-  clinical-core/        contratos clínicos compartidos
-  clinical-drg/         dominio e inferencia GRD
-dataset/                dataset fuente y artefactos locales generados
-docs/                   documentación técnica viva
+  clinical-core/        contratos compartidos
+  clinical-drg/         inferencia y orquestación GRD
+dataset/                dataset fuente y artefactos locales
 notebook/               análisis exploratorio histórico
-src/                    compatibilidad temporal con el proyecto académico
-tests/                  pruebas automatizadas del workspace
+src/                    implementación académica aún utilizada por compatibilidad
+tests/                  pruebas automatizadas
+docs/                   documentación técnica vigente
 ```
 
-La arquitectura detallada y sus reglas de evolución están en [`docs/architecture.md`](docs/architecture.md).
+Documentación técnica:
+
+- [Arquitectura](docs/architecture.md)
+- [Testing](docs/testing.md)
+- [Desarrollo](docs/development.md)
 
 ## Requisitos
 
-- Python 3.11 o 3.12
+- Python 3.11 o 3.12 para paridad con CI
 - [`uv`](https://docs.astral.sh/uv/)
 
 ## Inicio rápido
 
-Instala el workspace y las herramientas de desarrollo:
+Instala el workspace:
 
 ```bash
 uv sync --all-packages --group dev
 ```
 
-Inicia la API oficial:
+Inicia la API:
 
 ```bash
 uv run uvicorn clinical_api.app:app --app-dir apps/api/src --reload
 ```
 
-Comprueba liveness y disponibilidad del modelo:
+Endpoints actuales:
 
 ```text
-GET /health
-```
-
-Ejecuta una predicción GRD mediante:
-
-```text
+GET  /health
 POST /v1/predictions/drg
 ```
 
-La API puede iniciar sin un modelo entrenado. En ese estado `/health` informa que el modelo GRD no está disponible y el endpoint de predicción responde como servicio no preparado.
+La API puede arrancar sin un modelo entrenado. En ese estado `/health` sigue disponible e informa `drg_model_ready: false`; las predicciones responden HTTP 503 hasta que los artefactos requeridos estén disponibles.
 
 ## Entrenamiento
 
-Instala las dependencias del pipeline:
+Instala las dependencias del pipeline histórico:
 
 ```bash
 uv sync --all-packages --group dev --group training
 ```
 
-Ejecuta el pipeline histórico mientras continúa su migración:
+Ejecuta su entry point actual:
 
 ```bash
 uv run --group training python src/training/training_main.py --skip-lgbm
 ```
 
-Entre los artefactos generados localmente se encuentran:
+Los artefactos generados localmente no deben versionarse.
 
-```text
-dataset/processed/metadata.pkl
-models/best_model.pkl
-```
-
-`metadata.pkl` forma parte del contrato entre entrenamiento e inferencia porque conserva los códigos y el orden real de las features utilizadas por el modelo. Estos artefactos generados no deben versionarse.
-
-## Compatibilidad histórica
-
-El chatbot Flask/Gemini original permanece disponible únicamente como ruta de compatibilidad:
-
-```bash
-uv sync --all-packages --group training --group legacy-chatbot
-uv run --group training --group legacy-chatbot python src/main.py
-```
-
-Las funcionalidades nuevas deben integrarse en `apps/api` y en los paquetes de dominio, no en la capa histórica de `src/`.
-
-## Calidad y pruebas
-
-Ejecuta las validaciones locales principales:
+## Calidad
 
 ```bash
 uv run ruff check apps packages tests
 uv run pytest -q
 ```
 
-La estrategia completa, incluyendo pruebas de API, dominio y contratos de entrenamiento, está documentada en [`docs/testing.md`](docs/testing.md).
+GitHub Actions ejecuta estas validaciones sobre Python 3.11 y 3.12.
 
 ## Contribución y seguridad
 
-- Guía de contribución: [`.github/CONTRIBUTING.md`](.github/CONTRIBUTING.md)
-- Política de seguridad: [`.github/SECURITY.md`](.github/SECURITY.md)
-- Código de conducta: [`.github/CODE_OF_CONDUCT.md`](.github/CODE_OF_CONDUCT.md)
-
-Nunca deben versionarse secretos, archivos `.env`, datos clínicos identificables, modelos generados ni datasets procesados locales.
+- [Guía de contribución](.github/CONTRIBUTING.md)
+- [Política de seguridad](.github/SECURITY.md)
+- [Código de conducta](.github/CODE_OF_CONDUCT.md)
 
 ## Licencia
 
@@ -134,4 +111,4 @@ Este repositorio se distribuye bajo la [MIT License](LICENSE).
 
 ## Aviso clínico
 
-Este proyecto es de carácter académico y de ingeniería de software/ML. No constituye una herramienta de diagnóstico médico ni sustituye la evaluación de profesionales de la salud.
+Este proyecto es de carácter académico y de ingeniería de software/ML. No constituye una herramienta de diagnóstico médico ni sustituye evaluación clínica profesional.
