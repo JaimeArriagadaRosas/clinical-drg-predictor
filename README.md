@@ -2,74 +2,88 @@
   <img src=".github/assets/readme-banner.svg" alt="Clinical Intelligence Platform" width="100%" />
 </p>
 
-<p align="center">
-  <a href="https://github.com/JaimeArriagadaRosas/clinical-drg-predictor/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/JaimeArriagadaRosas/clinical-drg-predictor/actions/workflows/ci.yml/badge.svg" /></a>
-  <img alt="Python" src="https://img.shields.io/badge/Python-3.11%20%7C%203.12-3776AB?logo=python&logoColor=white" />
-  <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-API-009688?logo=fastapi&logoColor=white" />
-  <img alt="React" src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=111" />
-  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white" />
-  <img alt="License" src="https://img.shields.io/badge/License-MIT-green.svg" />
-</p>
-
 # Clinical Intelligence Platform
 
-Plataforma modular de ingeniería de datos y Machine Learning clínico para predicción de **Grupos Relacionados por Diagnóstico (GRD)**, soporte a decisión e interoperabilidad clínica.
+Plataforma de ingeniería de datos y Machine Learning clínico orientada a la predicción de **Grupos Relacionados por Diagnóstico (GRD)** a partir de episodios hospitalarios.
 
-El proyecto moderniza una implementación académica previa con límites explícitos de aplicación, contratos reutilizables, frontend clínico independiente, runtime local y un adaptador FHIR acotado al caso de predicción actual.
+La reconstrucción separa el ciclo offline de datos/entrenamiento del producto de inferencia. MIMIC-IV es la fuente hospitalaria de referencia para desarrollo reproducible; los datasets clínicos reales se mantienen fuera de Git.
 
-## Capacidades actuales
-
-- API HTTP con FastAPI y OpenAPI.
-- Aplicación web con React, TypeScript, Vite y Tailwind CSS.
-- Runtime local con setup, preboot, consola interactiva y graceful shutdown.
-- Inferencia GRD desacoplada del transporte HTTP.
-- Adaptador FHIR para `Bundle` de un caso clínico con `Patient`, `Condition` y `Procedure`.
-- Contratos compartidos en paquetes reutilizables.
-- Arranque de la API incluso cuando los artefactos del modelo no están disponibles.
-- Pruebas automatizadas y CI separado para Python y web.
-- Gestión Python con `uv` y frontend con `pnpm`.
-
-## Estructura
+## Arquitectura actual
 
 ```text
 apps/
-  api/                  aplicación FastAPI
-  runtime/              lifecycle y consola local
-  web/                  interfaz clínica React/TypeScript
+  api/                  FastAPI / inferencia
+  runtime/              lifecycle del producto
+  training/             Training Workbench Python
+  web/                  React + TypeScript
 packages/
   clinical-core/        contratos compartidos
-  clinical-drg/         inferencia y orquestación GRD
-  clinical-fhir/        adaptadores de interoperabilidad FHIR
-dataset/                dataset fuente y artefactos locales
-notebook/               análisis exploratorio histórico
-src/                    implementación académica aún utilizada por compatibilidad
-tests/                  pruebas automatizadas
-docs/                   documentación técnica vigente
+  clinical-data/        encuentros, MIMIC, validación, EDA y almacenamiento
+  clinical-drg/         inferencia GRD y carga de modelos publicados
+  clinical-fhir/        interoperabilidad FHIR
+  clinical-ml/          features, split, entrenamiento, evaluación y publicación
+tools/
+  datasets/             adquisición y verificación de datasets externos
 ```
 
-Documentación técnica:
+## Flujo ML
 
-- [Arquitectura](docs/architecture.md)
-- [Testing](docs/testing.md)
-- [Desarrollo](docs/development.md)
+```text
+MIMIC-IV / fuente autorizada
+  -> HospitalEncounter
+  -> validación + EDA
+  -> Parquet / DuckDB
+  -> features versionadas
+  -> split seguro por paciente o tiempo
+  -> baseline / RandomForest / LightGBM opcional
+  -> evaluación multiclasificación
+  -> modelo versionado + MLflow
+  -> clinical-drg
+  -> FastAPI / web / chatbot
+```
+
+## Datos clínicos
+
+Los datasets clínicos no se distribuyen en este repositorio. Para descargar los archivos públicos necesarios de MIMIC-IV Demo 2.2:
+
+```bash
+uv run python tools/datasets/fetch.py mimic-iv-demo \
+  --destination data/raw/mimic-iv-demo
+```
+
+Para una copia de MIMIC obtenida legítimamente por el usuario:
+
+```bash
+uv run python tools/datasets/fetch.py mimic-iv-demo \
+  --destination data/raw/mimic-iv-demo \
+  --from-directory /ruta/a/mimic
+```
+
+La segunda modalidad sólo verifica e importa archivos ya autorizados; no gestiona ni evade credenciales de PhysioNet.
+
+El antiguo CSV académico fue retirado del árbol actual. Puede seguir existiendo en commits históricos; este cambio no reescribe el historial de Git.
 
 ## Requisitos
 
-- Python 3.11 o 3.12 para paridad con CI
-- Node.js 22
+- Python 3.11–3.13
 - `uv`
+- Node.js 22
 - `pnpm` 10
 
-## Inicio rápido
-
-Instala ambos workspaces:
+## Instalación
 
 ```bash
 uv sync --all-packages --group dev
 pnpm install
 ```
 
-O utiliza el runtime:
+Para LightGBM y compatibilidad con entrenamiento histórico durante la migración:
+
+```bash
+uv sync --all-packages --group dev --group training
+```
+
+## Producto
 
 ```bash
 uv run clinical-platform setup
@@ -77,15 +91,10 @@ uv run clinical-platform preboot
 uv run clinical-platform run
 ```
 
-La consola interactiva permite gestionar servicios locales:
+API local: `http://127.0.0.1:8000`  
+Web local: `http://127.0.0.1:5173`
 
-```bash
-uv run clinical-platform console
-```
-
-La API queda en `http://127.0.0.1:8000` y la web en `http://127.0.0.1:5173`.
-
-Endpoints actuales:
+Endpoints:
 
 ```text
 GET  /health
@@ -93,37 +102,39 @@ POST /v1/predictions/drg
 POST /v1/predictions/drg/fhir
 ```
 
-El endpoint FHIR es un adaptador de interoperabilidad para el contrato de predicción actual; no pretende implementar un servidor FHIR completo.
+El API carga un artefacto publicado desde `CLINICAL_MODEL_PATH` o, por defecto, `artifacts/models/current`. Si el artefacto no está disponible o es incompatible, `/health` continúa respondiendo con `drg_model_ready: false`.
 
-## Escala de datos
+## Training Workbench
 
-El dataset académico actual se mantiene como fuente local pequeña. La arquitectura separa interoperabilidad de almacenamiento para permitir evolucionar hacia formatos columnares y procesamiento analítico sin introducir infraestructura distribuida mientras el volumen no lo justifique.
-
-FHIR se utiliza como frontera clínica. Para extracción masiva futura, el camino previsto es FHIR Bulk Data/NDJSON y procesamiento columnar; Kafka, Spark u otras tecnologías distribuidas sólo deben incorporarse cuando exista una necesidad de throughput, latencia o volumen medible.
-
-## Entrenamiento
+El entry point moderno es:
 
 ```bash
-uv sync --all-packages --group dev --group training
-uv run --group training python src/training/training_main.py --skip-lgbm
+uv run clinical-train --help
 ```
 
-Los artefactos generados localmente no deben versionarse.
+La aplicación de entrenamiento es una capa de orquestación; la transformación de datos y los algoritmos ML pertenecen a `clinical-data` y `clinical-ml`.
+
+## Escala
+
+El backend local usa Polars, PyArrow/Parquet y DuckDB. La arquitectura reserva un contrato de motor para incorporar PySpark/Delta cuando el volumen justifique ejecución distribuida, sin duplicar el pipeline clínico.
+
+FHIR se mantiene como frontera de interoperabilidad y no como motor de almacenamiento o Big Data.
 
 ## Calidad
 
 ```bash
-uv run ruff check apps packages tests
+uv run ruff check apps packages tools tests
 uv run pytest -q
 pnpm web:lint
 pnpm web:build
 ```
 
-## Contribución y seguridad
+## Documentación
 
-- [Guía de contribución](.github/CONTRIBUTING.md)
-- [Política de seguridad](.github/SECURITY.md)
-- [Código de conducta](.github/CODE_OF_CONDUCT.md)
+- [Arquitectura](docs/architecture.md)
+- [Desarrollo](docs/development.md)
+- [Testing](docs/testing.md)
+- [Diseño de reconstrucción](docs/clinical-ml-platform-design.md)
 
 ## Licencia
 
@@ -131,4 +142,4 @@ Este repositorio se distribuye bajo la [MIT License](LICENSE).
 
 ## Aviso clínico
 
-Este proyecto es de carácter académico y de ingeniería de software/ML. No constituye una herramienta de diagnóstico médico ni sustituye evaluación clínica profesional.
+Proyecto académico/de ingeniería de software y ML. No constituye diagnóstico médico ni sustituye evaluación clínica profesional.
