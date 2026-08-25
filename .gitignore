@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Generated model/data artifacts
+models/
+dataset/processed/
+data/processed/
+outputs/
+*.pkl
+*.joblib
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
