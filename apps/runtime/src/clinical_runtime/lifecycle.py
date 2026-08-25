@@ -14,6 +14,44 @@ class ServiceSpec:
     cwd: Path
 
 
+def default_service_specs(root: Path) -> tuple[ServiceSpec, ...]:
+    return (
+        ServiceSpec(
+            name="api",
+            command=(
+                "uv",
+                "run",
+                "uvicorn",
+                "clinical_api.app:app",
+                "--app-dir",
+                "apps/api/src",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                "8000",
+                "--reload",
+            ),
+            cwd=root,
+        ),
+        ServiceSpec(
+            name="web",
+            command=(
+                "pnpm",
+                "--dir",
+                "apps/web",
+                "run",
+                "dev",
+                "--",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                "5173",
+            ),
+            cwd=root,
+        ),
+    )
+
+
 class ManagedService:
     def __init__(self, spec: ServiceSpec) -> None:
         self.spec = spec
@@ -44,47 +82,12 @@ class ManagedService:
 
 
 class PlatformRuntime:
-    def __init__(self, root: Path) -> None:
+    def __init__(self, root: Path, specs: tuple[ServiceSpec, ...] | None = None) -> None:
         self.root = root
-        self.services = {
-            "api": ManagedService(
-                ServiceSpec(
-                    name="api",
-                    command=(
-                        "uv",
-                        "run",
-                        "uvicorn",
-                        "clinical_api.app:app",
-                        "--app-dir",
-                        "apps/api/src",
-                        "--host",
-                        "127.0.0.1",
-                        "--port",
-                        "8000",
-                        "--reload",
-                    ),
-                    cwd=root,
-                )
-            ),
-            "web": ManagedService(
-                ServiceSpec(
-                    name="web",
-                    command=(
-                        "pnpm",
-                        "--dir",
-                        "apps/web",
-                        "run",
-                        "dev",
-                        "--",
-                        "--host",
-                        "127.0.0.1",
-                        "--port",
-                        "5173",
-                    ),
-                    cwd=root,
-                )
-            ),
-        }
+        resolved_specs = specs if specs is not None else default_service_specs(root)
+        if any(spec.name == "training" for spec in resolved_specs):
+            raise ValueError("training belongs to the Training Workbench, not the product runtime")
+        self.services = {spec.name: ManagedService(spec) for spec in resolved_specs}
         self._shutting_down = False
 
     def start(self, name: str | None = None) -> None:
