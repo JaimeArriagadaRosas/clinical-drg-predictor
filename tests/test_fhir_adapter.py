@@ -2,19 +2,31 @@ from datetime import date
 
 import pytest
 
-from clinical_fhir import FHIRAdapterError, prediction_request_from_bundle
+from clinical_fhir import FHIRAdapterError, bundle_to_encounter, prediction_request_from_bundle
 
 
-def test_fhir_bundle_maps_patient_conditions_and_procedures() -> None:
-    bundle = {
+def sample_bundle() -> dict:
+    return {
         "resourceType": "Bundle",
         "type": "collection",
         "entry": [
             {
                 "resource": {
                     "resourceType": "Patient",
+                    "id": "patient-1",
                     "gender": "female",
                     "birthDate": "1980-08-26",
+                }
+            },
+            {
+                "resource": {
+                    "resourceType": "Encounter",
+                    "id": "encounter-1",
+                    "period": {
+                        "start": "2026-08-25T10:00:00+00:00",
+                        "end": "2026-08-26T10:00:00+00:00",
+                    },
+                    "hospitalization": {"dischargeDisposition": {"text": "HOME"}},
                 }
             },
             {
@@ -41,8 +53,23 @@ def test_fhir_bundle_maps_patient_conditions_and_procedures() -> None:
         ],
     }
 
-    request = prediction_request_from_bundle(bundle, reference_date=date(2026, 8, 25))
 
+def test_fhir_bundle_maps_to_canonical_encounter() -> None:
+    encounter = bundle_to_encounter(sample_bundle(), reference_date=date(2026, 8, 25))
+
+    assert encounter.encounter_id == "encounter-1"
+    assert encounter.patient.patient_id == "patient-1"
+    assert encounter.patient.age == 45
+    assert encounter.patient.sex == "F"
+    assert encounter.diagnoses[0].code == "I10"
+    assert encounter.diagnoses[0].coding_system == "ICD10CM"
+    assert encounter.procedures[0].code == "39.61"
+    assert encounter.procedures[0].coding_system == "ICD9PCS"
+    assert encounter.target is None
+
+
+def test_compatibility_prediction_request_uses_canonical_mapping() -> None:
+    request = prediction_request_from_bundle(sample_bundle(), reference_date=date(2026, 8, 25))
     assert request.icd10_codes == ("I10",)
     assert request.icd9_codes == ("39.61",)
     assert request.age == 45
@@ -51,17 +78,10 @@ def test_fhir_bundle_maps_patient_conditions_and_procedures() -> None:
 
 def test_fhir_adapter_rejects_non_bundle_payload() -> None:
     with pytest.raises(FHIRAdapterError, match="FHIR Bundle"):
-        prediction_request_from_bundle({"resourceType": "Patient"})
+        bundle_to_encounter({"resourceType": "Patient"})
 
 
-def test_fhir_adapter_rejects_multiple_patients() -> None:
-    bundle = {
-        "resourceType": "Bundle",
-        "entry": [
-            {"resource": {"resourceType": "Patient"}},
-            {"resource": {"resourceType": "Patient"}},
-        ],
-    }
-
-    with pytest.raises(FHIRAdapterError, match="at most one Patient"):
-        prediction_request_from_bundle(bundle)
+def test_fhir_adapter_requires_one_patient_and_encounter() -> None:
+    bundle = {"resourceType": "Bundle", "entry": []}
+    with pytest.raises(FHIRAdapterError, match="exactly one Patient"):
+        bundle_to_encounter(bundle)

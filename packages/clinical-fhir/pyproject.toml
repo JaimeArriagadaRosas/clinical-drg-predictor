@@ -3,10 +3,11 @@ name = "clinical-fhir"
 version = "0.1.0"
 description = "FHIR interoperability adapters for clinical prediction contracts"
 requires-python = ">=3.11,<3.14"
-dependencies = ["clinical-core"]
+dependencies = ["clinical-core", "clinical-data"]
 
 [tool.uv.sources]
 clinical-core = { workspace = true }
+clinical-data = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]
